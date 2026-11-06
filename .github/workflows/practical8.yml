@@ -1,0 +1,50 @@
+name: Verify PracticalWork8
+
+on:
+  push:
+    paths:
+      - '.github/workflows/practical8.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  test-and-screenshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run the C# application
+        run: dotnet run --project PracticalWork8/AsyncDemo/AsyncDemo.csproj | tee PracticalWork8/program-output.txt
+      - name: Generate screenshot images from the actual console output
+        run: |
+          python3 -m pip install Pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+          root = Path("PracticalWork8")
+          output = (root / "program-output.txt").read_text(encoding="utf-8").splitlines()
+          font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 22)
+          root.joinpath("images").mkdir(exist_ok=True)
+          for name, lines in [("screenshot1.png", output[:5]), ("screenshot2.png", output)]:
+              width = 1160
+              height = 112 + len(lines) * 38
+              image = Image.new("RGB", (width, height), (21, 27, 37))
+              draw = ImageDraw.Draw(image)
+              draw.rectangle((0, 0, width, 50), fill=(42, 51, 66))
+              draw.text((25, 12), "Terminal — dotnet run", font=font, fill=(238, 243, 250))
+              for i, line in enumerate(lines):
+                  draw.text((25, 74 + i * 38), line, font=font, fill=(235, 242, 248))
+              image.save(root / "images" / name, optimize=True)
+          PY
+      - name: Save the screenshots in the repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PracticalWork8/images/screenshot1.png PracticalWork8/images/screenshot2.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Add verified PracticalWork8 screenshots"
+            git push
+          fi
