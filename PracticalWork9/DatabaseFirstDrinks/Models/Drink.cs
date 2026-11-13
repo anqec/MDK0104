@@ -1,4 +1,6 @@
-// Этот класс соответствует таблице drinks и может быть пересоздан командой scaffold.
+namespace DatabaseFirstDrinks.Models;
+
+// Модель таблицы drinks. Может быть пересоздана командой dotnet ef dbcontext scaffold.
 public partial class Drink
 {
     public int Id { get; set; }

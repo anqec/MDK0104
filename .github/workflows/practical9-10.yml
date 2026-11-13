@@ -1,0 +1,128 @@
+name: Verify PracticalWork9 and PracticalWork10
+
+on:
+  push:
+    paths:
+      - '.github/workflows/practical9-10.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      DB_CONNECTION_9_CODEFIRST: Host=localhost;Port=5432;Database=practice9_codefirst;Username=postgres;Password=postgres
+      DB_CONNECTION_9_DATABASEFIRST: Host=localhost;Port=5432;Database=practice9_drinks;Username=postgres;Password=postgres
+      DB_CONNECTION_10: Host=localhost;Port=5432;Database=practice10_music;Username=postgres;Password=postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install EF Core tools
+        run: |
+          dotnet tool install --global dotnet-ef --version 8.0.8
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Create PostgreSQL databases and SQL table
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE practice9_codefirst;"
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE practice9_drinks;"
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE practice10_music;"
+          psql -h localhost -U postgres -d practice9_drinks -v ON_ERROR_STOP=1 -f PracticalWork9/DatabaseFirstDrinks/create_tables.sql
+
+      - name: Restore projects
+        run: |
+          dotnet restore PracticalWork9/CodeFirstBikeRental/CodeFirstBikeRental.csproj
+          dotnet restore PracticalWork9/DatabaseFirstDrinks/DatabaseFirstDrinks.csproj
+          dotnet restore PracticalWork10/MusicCollection/MusicCollection.csproj
+
+      - name: Generate Code-First migrations and update databases
+        run: |
+          dotnet ef migrations add InitialCreate --project PracticalWork9/CodeFirstBikeRental/CodeFirstBikeRental.csproj --output-dir Migrations
+          dotnet ef database update --project PracticalWork9/CodeFirstBikeRental/CodeFirstBikeRental.csproj
+          dotnet ef migrations add InitialCreate --project PracticalWork10/MusicCollection/MusicCollection.csproj --output-dir Migrations
+          dotnet ef database update --project PracticalWork10/MusicCollection/MusicCollection.csproj
+
+      - name: Generate Database-First classes from SQL database
+        run: |
+          dotnet ef dbcontext scaffold "$DB_CONNECTION_9_DATABASEFIRST" Npgsql.EntityFrameworkCore.PostgreSQL --project PracticalWork9/DatabaseFirstDrinks/DatabaseFirstDrinks.csproj --output-dir Models --context-dir . --context DrinksContext --namespace DatabaseFirstDrinks.Models --context-namespace DatabaseFirstDrinks --no-onconfiguring --force
+
+      - name: Build every project
+        run: |
+          dotnet build PracticalWork9/CodeFirstBikeRental/CodeFirstBikeRental.csproj --configuration Release
+          dotnet build PracticalWork9/DatabaseFirstDrinks/DatabaseFirstDrinks.csproj --configuration Release
+          dotnet build PracticalWork10/MusicCollection/MusicCollection.csproj --configuration Release
+
+      - name: Run actual CRUD demonstrations
+        run: |
+          dotnet run --project PracticalWork9/CodeFirstBikeRental/CodeFirstBikeRental.csproj --no-restore | tee practical9-codefirst.log
+          dotnet run --project PracticalWork9/DatabaseFirstDrinks/DatabaseFirstDrinks.csproj --no-restore | tee practical9-databasefirst.log
+          dotnet run --project PracticalWork10/MusicCollection/MusicCollection.csproj --no-restore | tee practical10-music.log
+
+      - name: Check results and database state
+        run: |
+          grep -q "Аренда добавлена" practical9-codefirst.log
+          grep -q "аренда удалена" practical9-codefirst.log
+          grep -q "Удалили лимонад" practical9-databasefirst.log
+          grep -q "Альбом:" practical10-music.log
+          test "$(psql -h localhost -U postgres -d practice9_codefirst -tAc 'SELECT COUNT(*) FROM "Rentals";')" -eq 0
+          test "$(psql -h localhost -U postgres -d practice9_drinks -tAc 'SELECT COUNT(*) FROM drinks;')" -eq 1
+          test "$(psql -h localhost -U postgres -d practice10_music -tAc 'SELECT COUNT(*) FROM album_genres;')" -eq 1
+
+      - name: Create screenshots from verified console output
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+          font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", 20)
+          demos = [
+              ("practical9-codefirst.log", "PracticalWork9/images/codefirst.png", "Code-First / dotnet run"),
+              ("practical9-databasefirst.log", "PracticalWork9/images/databasefirst.png", "Database-First / dotnet run"),
+              ("practical10-music.log", "PracticalWork10/images/music.png", "Fluent API / dotnet run"),
+          ]
+          for log, destination, title in demos:
+              lines = Path(log).read_text(encoding="utf-8").splitlines()
+              image = Image.new("RGB", (1400, 105 + len(lines) * 34), (22, 28, 38))
+              draw = ImageDraw.Draw(image)
+              draw.rectangle((0, 0, image.width, 54), fill=(42, 50, 63))
+              draw.text((28, 14), title, font=font, fill=(245, 248, 252))
+              for i, line in enumerate(lines):
+                  draw.text((28, 74 + 34 * i), line, font=font, fill=(240, 244, 249))
+              path = Path(destination)
+              path.parent.mkdir(parents=True, exist_ok=True)
+              image.save(path, optimize=True)
+          PY
+
+      - name: Save generated migrations, scaffold, and screenshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PracticalWork9/CodeFirstBikeRental/Migrations
+          git add PracticalWork9/DatabaseFirstDrinks/Models PracticalWork9/DatabaseFirstDrinks/DrinksContext.cs
+          git add PracticalWork9/images PracticalWork10/MusicCollection/Migrations PracticalWork10/images
+          if ! git diff --cached --quiet; then
+            git commit -m "Add verified EF migrations, scaffolded models and screenshots"
+            git push
+          fi

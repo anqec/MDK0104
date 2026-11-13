@@ -1,5 +1,9 @@
+using DatabaseFirstDrinks.Models;
 using Microsoft.EntityFrameworkCore;
 
+namespace DatabaseFirstDrinks;
+
+// Контекст создан по схеме таблицы drinks. Команда scaffold заменит его автоматически.
 public partial class DrinksContext : DbContext
 {
     public DrinksContext(DbContextOptions<DrinksContext> options) : base(options)

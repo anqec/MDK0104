@@ -1,3 +1,5 @@
+using DatabaseFirstDrinks;
+using DatabaseFirstDrinks.Models;
 using Microsoft.EntityFrameworkCore;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
