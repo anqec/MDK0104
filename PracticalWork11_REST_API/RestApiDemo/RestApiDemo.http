@@ -1,0 +1,38 @@
+@baseUrl = http://localhost:5081
+
+### Создать студента
+POST {{baseUrl}}/api/students
+Content-Type: application/json
+
+{
+  "name": "Иван Иванов",
+  "age": 19
+}
+
+### Получить список
+GET {{baseUrl}}/api/students
+
+### Получить одного
+GET {{baseUrl}}/api/students/1
+
+### Обновить
+PUT {{baseUrl}}/api/students/1
+Content-Type: application/json
+
+{
+  "id": 1,
+  "name": "Иван Петров",
+  "age": 20
+}
+
+### Удалить
+DELETE {{baseUrl}}/api/students/1
+
+### Проверить валидацию
+POST {{baseUrl}}/api/students
+Content-Type: application/json
+
+{
+  "name": "",
+  "age": -1
+}
