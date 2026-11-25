@@ -1,0 +1,295 @@
+{
+  "info": {
+    "name": "Практическая работа №11 — REST API",
+    "description": "Запускайте запросы по порядку. ID автоматически записывается после POST.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5111"
+    },
+    {
+      "key": "studentId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 POST - Добавить студента",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/students",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "students"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Иван Иванов\",\n  \"age\": 19\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+              "if (pm.response.code === 201) { pm.collectionVariables.set(\"studentId\", pm.response.json().id); }",
+              "pm.test(\"Имя и ID\", function () { const s = pm.response.json(); pm.expect(s.name).to.eql(\"Иван Иванов\"); pm.expect(s.id).to.be.above(0); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 GET - Все студенты",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/students",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "students"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"В списке есть созданный студент\", function () { const id = Number(pm.collectionVariables.get(\"studentId\")); pm.expect(pm.response.json().some(s => s.id === id)).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 GET - Студент по ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/students/{{studentId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "students",
+            "{{studentId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Верный ID\", function () { pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"studentId\"))); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 PUT - Изменить студента",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/students/{{studentId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "students",
+            "{{studentId}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Иван Петров\",\n  \"age\": 20\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 GET - Проверить изменения",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/students/{{studentId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "students",
+            "{{studentId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Данные обновлены\", function () { const s = pm.response.json(); pm.expect(s.name).to.eql(\"Иван Петров\"); pm.expect(s.age).to.eql(20); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 DELETE - Удалить студента",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/students/{{studentId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "students",
+            "{{studentId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 GET - Проверить удаление",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/students/{{studentId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "students",
+            "{{studentId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 POST - Проверка неверного возраста",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/students",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "students"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Тест\",\n  \"age\": -1\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
